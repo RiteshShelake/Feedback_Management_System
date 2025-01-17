@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Feedback Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 50%;
+            margin: 50px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .star-rating {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        .star {
+            font-size: 30px;
+            cursor: pointer;
+            color: lightgray;
+        }
+
+        .star:hover,
+        .star.selected {
+            color: gold;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #5cb85c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #4cae4c;
+        }
+
+        .timer {
+            font-size: 20px;
+            color: red;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .admin-login {
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Product Feedback Form</h1>
+        <form id="feedbackForm">
+            <label for="product_name">Product Name:</label>
+            <input type="text" id="product_name" name="product_name" required>
+
+            <label for="user_name">Your Name:</label>
+            <input type="text" id="user_name" name="user_name" required>
+
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+
+            <label>Rating:</label>
+            <div class="star-rating" id="starRating">
+                <span class="star" data-value="1">★</span>
+                <span class="star" data-value="2">★</span>
+                <span class="star" data-value="3">★</span>
+                <span class="star" data-value="4">★</span>
+                <span class="star" data-value="5">★</span>
+            </div>
+            <input type="hidden" id="rating" name="rating" required>
+
+            <label for="comments">Comments:</label>
+            <textarea id="comments" name="comments"></textarea>
+
+            <div id="timerDisplay" class="timer" style="display: none;">Time left to edit: <span id="timeLeft">5</span> seconds</div>
+            <button type="submit">Submit Feedback</button>
+        </form>
+
+        <div class="admin-login">
+            <button id="adminLoginButton">Log in as Admin</button>
+        </div>
+    </div>
+
+    <script>
+        // star Rating
+        const starRating = document.getElementById('starRating');
+        const ratingInput = document.getElementById('rating');
+
+        starRating.addEventListener('click', (event) => {
+            if (event.target.classList.contains('star')) {
+                const value = event.target.getAttribute('data-value');
+                ratingInput.value = value;
+                document.querySelectorAll('.star').forEach(star => {
+                    star.classList.remove('selected');
+                });
+                for (let i = 0; i < value; i++) {
+                    starRating.children[i].classList.add('selected');
+                }
+            }
+        });
+
+        // Timer Logic
+        let countdownTimer;
+        let isEditing = false;
+
+        function startTimer(callback) {
+            let timeLeft = 5; // 5 seconds timer
+            document.getElementById('timerDisplay').style.display = 'block'; // show timer display
+            const timeLeftSpan = document.getElementById('timeLeft');
+            timeLeftSpan.innerText = timeLeft;
+
+            countdownTimer = setInterval(() => {
+                timeLeft -= 1;
+                timeLeftSpan.innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(countdownTimer);
+                    document.getElementById('timerDisplay').style.display = 'none'; // hide timer display
+                    if (callback) callback(); // execute callback after timer ends
+                }
+            }, 1000);
+        }
+
+        // form submission logic
+        const feedbackForm = document.getElementById('feedbackForm');
+        feedbackForm.addEventListener('submit', (event) => {
+            event.preventDefault(); // prevent default form submission
+            const formData = new FormData(feedbackForm);
+
+            // confirmation alert for submit or edit
+            const confirmation = confirm("Do you want to submit your feedback? Click 'Cancel' to edit your feedback.");
+            if (confirmation) {
+                // user chose to submit
+                submitFeedback(formData);
+            } else {
+                // user chose to edit
+                isEditing = true; // set editing state
+                alert("You can edit your feedback now. You have 5 seconds to make changes.");
+                startTimer(() => {
+                    if (isEditing) {
+                        alert("Feedback is being auto-submitted due to timeout.");
+                        submitFeedback(new FormData(feedbackForm)); // auto submit
+                    }
+                }); // start the timer for auto submission
+            }
+        });
+
+        function submitFeedback(formData) {
+            clearInterval(countdownTimer); // clear the timer
+            isEditing = false; // reset editing state
+            document.getElementById('timerDisplay').style.display = 'none'; // hide timer display
+            fetch('http://localhost:3000/submit-feedback', {
+                method: 'POST',
+                body: JSON.stringify(Object.fromEntries(formData.entries())),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Feedback submitted successfully!');
+                    feedbackForm.reset(); // reset the form after submission
+                    document.querySelectorAll('.star').forEach(star => {
+                        star.classList.remove('selected');
+                    });
+                    ratingInput.value = ''; // clear the rating input
+                } else {
+                    alert('Error submitting feedback: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error submitting feedback');
+            });
+        }
+
+        // admin login logic
+        const adminLoginButton = document.getElementById('adminLoginButton');
+        adminLoginButton.addEventListener('click', () => {
+            const password = prompt("Enter admin password:");
+            if (password === "swati@95") {
+                alert("Password correct! Redirecting to admin dashboard...");
+                window.location.href = 'admin-dashboard.html'; // redirect to admin dashboard
+            } else {
+                alert("Incorrect password. Access denied.");
+            }
+        });
+    </script>
+</body>
+</html>

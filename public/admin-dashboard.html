@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse; /*no space between borders */
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #dddddd; /* border for cells */
+            text-align: left;
+            padding: 8px;
+        }
+
+        th {
+            background-color: #007BFF; /* blue background for header */
+            color: white; /* white text color */
+        }
+
+        .approve-button {
+            background-color: green; /* green background for approve button */
+            color: white; /* white text color */
+            border: none; /* no border */
+            padding: 5px 10px; /* padding for button */
+            cursor: pointer; /* shape chaneg of pointer cursor on hover */
+ margin-right: 10px;/*space between those 2 buttons*/
+        }
+
+        .reject-button {
+            background-color: red; /* red background for reject button */
+            color: white; /* white text color */
+            border: none; /* no border */
+            padding: 5px 10px; /* padding for button */
+            cursor: pointer; /* shape change of pointer cursor on hover */
+        }
+
+        .approve-button:hover, .reject-button:hover {
+            opacity: 0.8; /* slightly transparent on hover */
+        }
+    </style>
+</head>
+<body>
+    <h1>Admin Dashboard</h1>
+    <table id="feedbackTable">
+        <thead>
+            <tr>
+                <th>Product Name</th>
+                <th>User Name</th>
+                <th>Email</th>
+                <th>Rating</th>
+                <th>Comments</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- feedback entries fetched from submit-feedback.html will be shown here -->
+        </tbody>
+    </table>
+
+    <script>
+        // Fetch feedback when the page loads
+        fetch('/admin/feedback')
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(data => {
+                const tableBody = document.getElementById('feedbackTable').getElementsByTagName('tbody')[0];
+                if (data.success) {
+                    data.feedback.forEach(feedback => {
+                        const row = tableBody.insertRow();
+                        row.insertCell(0).innerText = feedback.product_name;
+                        row.insertCell(1).innerText = feedback.user_name;
+                        row.insertCell(2).innerText = feedback.email;
+                        row.insertCell(3).innerText = feedback.rating;
+                        row.insertCell(4).innerText = feedback.comments;
+                        row.insertCell(5).innerText = feedback.approved;
+
+                        // approve button
+                        const approveButton = document.createElement('button');
+                        approveButton.innerText = 'Approve';
+                        approveButton.className = 'approve-button'; 
+                        approveButton.onclick = () => approveFeedback(feedback.id);
+                        
+                        // reject button
+                        const rejectButton = document.createElement('button');
+                        rejectButton.innerText = 'Reject';
+                        rejectButton.className = 'reject-button'; 
+                        rejectButton.onclick = () => rejectFeedback(feedback.id);
+                        const actionsCell = row.insertCell(6);
+                        actionsCell.appendChild(approveButton);
+                        actionsCell.appendChild(rejectButton);
+                    });
+                }
+            })
+            .catch(error => console.error('Error fetching feedback:', error));
+
+        function approveFeedback(id) {
+            fetch(`/admin/feedback/${id}/approve`, { method: 'PUT' })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    location.reload();
+                })
+                .catch(error => console.error('Error approving feedback:', error));
+        }
+
+        function rejectFeedback(id) {
+            fetch(`/admin/feedback/${id}/reject`, { method: 'PUT' })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    location.reload();
+                })
+                .catch(error => console.error('Error rejecting feedback:', error));
+        }
+    </script>
+</body>
+</html>
